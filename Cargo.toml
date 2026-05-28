@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-eval-ffi = { git = "https://github.com/trueagi-io/MORK", package = "eval-ffi" }
-eval = { git = "https://github.com/trueagi-io/MORK", package = "eval" }
-mork-expr = { git = "https://github.com/trueagi-io/MORK", package = "mork-expr" }
+eval-ffi = { git = "https://github.com/iCog-Labs-Dev/MORK", branch = "more-grounding-fns", package = "eval-ffi" }
+eval = { git = "https://github.com/iCog-Labs-Dev/MORK", branch = "more-grounding-fns", package = "eval" }
+mork-expr = { git = "https://github.com/iCog-Labs-Dev/MORK", branch = "more-grounding-fns", package = "mork-expr" }
