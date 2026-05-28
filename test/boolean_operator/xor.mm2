@@ -1,0 +1,42 @@
+(exec 0
+    (,)
+    (O
+        (pure
+            (false xor false => $r)
+            $r
+            (xor_bool (bool_from_string false) (bool_from_string false))
+        )
+    )
+)
+
+(exec 1 
+    (,)
+    (O
+        (pure
+            (true xor false => $r)
+            $r
+            (xor_bool (bool_from_string true) (bool_from_string false))
+        )
+    )
+)
+(exec 2
+    (,)
+    (O
+        (pure
+            (false xor true => $r)
+            $r
+            (xor_bool (bool_from_string false) (bool_from_string true))
+        )
+    )
+)
+
+(exec 3
+    (,)
+    (O
+        (pure
+            (true xor true => $r)
+            $r
+            (xor_bool (bool_from_string true) (bool_from_string true))
+        )
+    )
+)
