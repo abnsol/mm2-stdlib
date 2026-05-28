@@ -1,0 +1,9 @@
+[package]
+name = "mm2-stdlib"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eval-ffi = { path = "../MORK/experiments/eval-ffi" }
+eval = { path = "../MORK/experiments/eval" }
+mork-expr = { path = "../MORK/expr" }
