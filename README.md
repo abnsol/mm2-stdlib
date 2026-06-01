@@ -92,6 +92,7 @@ mork-expr = { path = "expr" }
 
 | MM2 function name | Arguments | Returns | Description |
 |---|---|---|---|
+| `bool_from_string` | `(String)` | `Bool` | Parse a boolean from a string. |
 | `and_bool`, `or_bool`, `xor_bool`, `implies_bool` | `(Bool, Bool)` | `Bool` | Logical operators. |
 | `<op>_<type>` | `(Type, Type)` | `Bool` | Numeric comparisons: `lt`, `gt`, `le`, `ge`, `eq`, `ne` for `u8`–`u128`, `i8`–`i128`, `f32`, `f64`. |
 | `length`, `size-atom` | `(List)` | `Number` | Number of elements in a list. |
