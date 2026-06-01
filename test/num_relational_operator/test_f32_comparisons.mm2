@@ -1,8 +1,8 @@
-(Age Biniam 32)
-(Age Abenezer 23)
-(Age Nahom 27)
-(Age Nama 34)
-(Age Eyasu 27)
+(Age E 32)
+(Age A 23)
+(Age C 27)
+(Age B 34)
+(Age D 27)
 
 (exec 0
     (, (Age $x $y))
