@@ -32,3 +32,18 @@
         )
     )
 )
+
+(exec 6
+    (,)
+    (O  (pure
+            (Test MinAtomTupleArg $result)
+            $result
+            (min-atom (tuple 3 8 1 6 2))
+        )
+        (pure
+            (Test MaxAtomTupleArg $result)
+            $result
+            (max-atom (tuple 3 8 1 6 2))
+        )
+    )
+)

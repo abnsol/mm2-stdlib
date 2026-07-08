@@ -1,7 +1,7 @@
 use eval::{EvalScope, FuncType};
 use eval_ffi::{EvalError, ExprSink, ExprSource, SourceItem, Tag};
 use mork_expr::Expr;
-use crate::list_helpers::{exp_to_vec, vec_to_exp, expr_span, items_to_f64s, expr_symbol_content};
+use crate::list_helpers::{exp_to_vec, vec_to_exp, exp_to_spans, spans_to_exp, expr_span, items_to_f64s, expr_symbol_content};
 
 macro_rules! relational_binary {
     ($name:ident($x:ident: $tx:ty, $y:ident: $ty:ty) => $e:expr) => {
@@ -171,18 +171,30 @@ pub extern "C" fn cons(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(),
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
 
-    if expr.consume_head_check(b"cons")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let head = expr.consume::<Expr>()?;
-    let tail_tuple = expr.consume::<Expr>()?;
-
-    let tail_items = exp_to_vec(tail_tuple)?;
+    let arity = expr.consume_head_check(b"cons")?;
+    let (head, tail_tuple) = match arity {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let items = exp_to_vec(args)?;
+            if items.len() != 2 {
+                return Err(EvalError::from("cons pair form takes two items"));
+            }
+            (items[0], items[1])
+        }
+        2 => {
+            let head = expr.consume::<Expr>()?;
+            let tail_tuple = expr.consume::<Expr>()?;
+            (head, tail_tuple)
+        }
+        _ => return Err(EvalError::from("takes one argument pair or two arguments")),
+    };
+    let head_span = expr_span(head).to_vec();
+    let tail_items = exp_to_spans(tail_tuple)?;
 
     sink.write(SourceItem::Tag(Tag::Arity((tail_items.len() + 1) as u8)))?;
-    sink.extend_from_slice(expr_span(head))?;
+    sink.extend_from_slice(&head_span)?;
     for e in &tail_items {
-        sink.extend_from_slice(expr_span(*e))?;
+        sink.extend_from_slice(e)?;
     }
     Ok(())
 }
@@ -317,123 +329,141 @@ pub extern "C" fn cdr_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result
 pub extern "C" fn index_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"index-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list = expr.consume::<Expr>()?;
-    let index_expr = expr.consume::<Expr>()?;
-    let items = exp_to_vec(list)?;
-    let index_span = expr_span(index_expr);
+    let arity = expr.consume_head_check(b"index-atom")?;
+    let (items, index_span) = match arity {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            if pair.len() != 2 {
+                return Err(EvalError::from("index-atom pair form takes two items"));
+            }
+            (exp_to_spans(pair[0])?, expr_span(pair[1]).to_vec())
+        }
+        2 => {
+            let list = expr.consume::<Expr>()?;
+            let items = exp_to_spans(list)?;
+            let index_expr = expr.consume::<Expr>()?;
+            (items, expr_span(index_expr).to_vec())
+        }
+        _ => return Err(EvalError::from("takes one argument pair or two arguments")),
+    };
     let index_str = unsafe { std::str::from_utf8_unchecked(index_span.get(1..).ok_or_else(|| EvalError::from("invalid index span"))?) };
     let index: usize = index_str.parse().map_err(|_| EvalError::from("invalid index"))?;
     if index >= items.len() {
         return Err(EvalError::from("index out of bounds"));
     }
-    sink.extend_from_slice(expr_span(items[index]))?;
+    sink.extend_from_slice(&items[index])?;
     Ok(())
 }
 
 pub extern "C" fn is_member(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"is-member")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let elem = expr.consume::<Expr>()?;
-    let list = expr.consume::<Expr>()?;
-    let items = exp_to_vec(list)?;
-    let elem_span = expr_span(elem);
-    let found = items.iter().any(|item| expr_span(*item) == elem_span);
+    let arity = expr.consume_head_check(b"is-member")?;
+    let (elem_span, items) = match arity {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            if pair.len() != 2 {
+                return Err(EvalError::from("is-member pair form takes two items"));
+            }
+            (expr_span(pair[0]).to_vec(), exp_to_spans(pair[1])?)
+        }
+        2 => {
+            let elem = expr.consume::<Expr>()?;
+            let elem_span = expr_span(elem).to_vec();
+            let list = expr.consume::<Expr>()?;
+            (elem_span, exp_to_spans(list)?)
+        }
+        _ => return Err(EvalError::from("takes one argument pair or two arguments")),
+    };
+    let found = items.iter().any(|item| item == &elem_span);
     let s = if found { "true" } else { "false" };
     sink.write(SourceItem::Symbol(s.as_bytes().into()))?;
     Ok(())
 }
 
+fn consume_list_pair(expr: &mut ExprSource, head: &[u8]) -> Result<(Vec<Vec<u8>>, Vec<Vec<u8>>), EvalError> {
+    match expr.consume_head_check(head)? {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            if pair.len() != 2 {
+                return Err(EvalError::from("pair form takes two list items"));
+            }
+            Ok((exp_to_spans(pair[0])?, exp_to_spans(pair[1])?))
+        }
+        2 => {
+            let list1 = expr.consume::<Expr>()?;
+            let items1 = exp_to_spans(list1)?;
+            let list2 = expr.consume::<Expr>()?;
+            let items2 = exp_to_spans(list2)?;
+            Ok((items1, items2))
+        }
+        _ => Err(EvalError::from("takes one argument pair or two arguments")),
+    }
+}
+
 pub extern "C" fn subtraction_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"subtraction-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_list_pair(expr, b"subtraction-atom")?;
     let mut result = Vec::with_capacity(items1.len());
-    let mut to_remove: Vec<&[u8]> = items2.iter().map(|e| expr_span(*e)).collect();
-    for item in &items1 {
-        let span = expr_span(*item);
-        if let Some(pos) = to_remove.iter().position(|s| *s == span) {
+    let mut to_remove = items2;
+    for item in items1 {
+        if let Some(pos) = to_remove.iter().position(|s| s == &item) {
             to_remove.swap_remove(pos);
         } else {
-            result.push(*item);
+            result.push(item);
         }
     }
-    vec_to_exp(sink, &result)
+    spans_to_exp(sink, &result)
 }
 
 pub extern "C" fn union_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"union-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_list_pair(expr, b"union-atom")?;
     let mut result = Vec::with_capacity(items1.len() + items2.len());
-    result.extend_from_slice(&items1);
-    result.extend_from_slice(&items2);
-    vec_to_exp(sink, &result)
+    for item in items1.into_iter().chain(items2) {
+        if !result.iter().any(|seen| seen == &item) {
+            result.push(item);
+        }
+    }
+    spans_to_exp(sink, &result)
 }
 
 pub extern "C" fn intersection_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"intersection-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
-    let mut counts2: Vec<(&[u8], usize)> = Vec::with_capacity(items2.len());
-    for item in &items2 {
-        let span = expr_span(*item);
-        if let Some((_, count)) = counts2.iter_mut().find(|(s, _)| *s == span) {
+    let (items1, items2) = consume_list_pair(expr, b"intersection-atom")?;
+    let result_capacity = items1.len().min(items2.len());
+    let mut counts2: Vec<(Vec<u8>, usize)> = Vec::with_capacity(items2.len());
+    for item in items2 {
+        if let Some((_, count)) = counts2.iter_mut().find(|(s, _)| s == &item) {
             *count += 1;
         } else {
-            counts2.push((span, 1));
+            counts2.push((item, 1));
         }
     }
-    let mut result = Vec::with_capacity(items1.len().min(items2.len()));
-    for item in &items1 {
-        let span = expr_span(*item);
-        if let Some((_, count)) = counts2.iter_mut().find(|(s, _)| *s == span) {
+    let mut result = Vec::with_capacity(result_capacity);
+    for item in items1 {
+        if let Some((_, count)) = counts2.iter_mut().find(|(s, _)| s == &item) {
             if *count > 0 {
-                result.push(*item);
+                result.push(item);
                 *count -= 1;
             }
         }
     }
-    vec_to_exp(sink, &result)
+    spans_to_exp(sink, &result)
 }
 
 pub extern "C" fn append(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"append")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
-    let mut result = Vec::with_capacity(items1.len() + items2.len());
-    result.extend_from_slice(&items1);
-    result.extend_from_slice(&items2);
-    vec_to_exp(sink, &result)
+    let (mut result, items2) = consume_list_pair(expr, b"append")?;
+    result.extend(items2);
+    spans_to_exp(sink, &result)
 }
 
 pub extern "C" fn last(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
@@ -466,15 +496,26 @@ pub extern "C" fn reverse(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<
 pub extern "C" fn exclude_item(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"exclude-item")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let elem = expr.consume::<Expr>()?;
-    let list = expr.consume::<Expr>()?;
-    let items = exp_to_vec(list)?;
-    let elem_span = expr_span(elem);
-    let result: Vec<Expr> = items.into_iter().filter(|item| expr_span(*item) != elem_span).collect();
-    vec_to_exp(sink, &result)
+    let arity = expr.consume_head_check(b"exclude-item")?;
+    let (elem_span, items) = match arity {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            if pair.len() != 2 {
+                return Err(EvalError::from("exclude-item pair form takes two items"));
+            }
+            (expr_span(pair[0]).to_vec(), exp_to_spans(pair[1])?)
+        }
+        2 => {
+            let elem = expr.consume::<Expr>()?;
+            let elem_span = expr_span(elem).to_vec();
+            let list = expr.consume::<Expr>()?;
+            (elem_span, exp_to_spans(list)?)
+        }
+        _ => return Err(EvalError::from("takes one argument pair or two arguments")),
+    };
+    let result: Vec<Vec<u8>> = items.into_iter().filter(|item| item != &elem_span).collect();
+    spans_to_exp(sink, &result)
 }
 
 pub extern "C" fn min_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
@@ -554,20 +595,33 @@ pub extern "C" fn sort_math(expr: *mut ExprSource, sink: *mut ExprSink) -> Resul
 }
 
 fn foldl_impl(expr: &mut ExprSource, sink: &mut ExprSink, head: &[u8]) -> Result<(), EvalError> {
-    if expr.consume_head_check(head)? != 3 {
-        return Err(EvalError::from("takes three arguments"));
-    }
-    let func = expr.consume::<Expr>()?;
-    let init = expr.consume::<Expr>()?;
-    let list = expr.consume::<Expr>()?;
-    let items = exp_to_vec(list)?;
-    let func_name = expr_span(func);
-    let mut accum_bytes = expr_span(init).to_vec();
-    for item in &items {
-        let item_bytes = expr_span(*item);
+    let (func_name, mut accum_bytes, items) = match expr.consume_head_check(head)? {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let triplet = exp_to_vec(args)?;
+            if triplet.len() != 3 {
+                return Err(EvalError::from("fold pair form takes three items"));
+            }
+            (
+                expr_span(triplet[0]).to_vec(),
+                expr_span(triplet[1]).to_vec(),
+                exp_to_spans(triplet[2])?,
+            )
+        }
+        3 => {
+            let func = expr.consume::<Expr>()?;
+            let func_name = expr_span(func).to_vec();
+            let init = expr.consume::<Expr>()?;
+            let accum_bytes = expr_span(init).to_vec();
+            let list = expr.consume::<Expr>()?;
+            (func_name, accum_bytes, exp_to_spans(list)?)
+        }
+        _ => return Err(EvalError::from("takes one argument triplet or three arguments")),
+    };
+    for item_bytes in &items {
         let mut new_accum = Vec::with_capacity(1 + func_name.len() + accum_bytes.len() + item_bytes.len());
         new_accum.push(mork_expr::item_byte(Tag::Arity(3)));
-        new_accum.extend_from_slice(func_name);
+        new_accum.extend_from_slice(&func_name);
         new_accum.extend_from_slice(&accum_bytes);
         new_accum.extend_from_slice(item_bytes);
         accum_bytes = new_accum;

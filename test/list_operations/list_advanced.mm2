@@ -44,8 +44,27 @@
     (O  (pure 
             (Test ExcludeItem $type $result)
             $result
-            (exclude-item (' $elem) (' $list))
+            (exclude-item (' ($elem $list)))
         )
     )
 )
 
+(exec 4
+    (,)
+    (O  (pure
+            (Test LastTupleArg $result)
+            $result
+            (last (tuple a b c d))
+        )
+        (pure
+            (Test ReverseTupleArg $result)
+            $result
+            (reverse (tuple a b c d))
+        )
+        (pure
+            (Test ExcludeItemTuplePacked $result)
+            $result
+            (exclude-item (tuple b (tuple a b c b)))
+        )
+    )
+)

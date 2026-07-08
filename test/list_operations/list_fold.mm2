@@ -9,24 +9,42 @@
 ;; ---------------- FOLDL TEST ----------------
 ;; foldl constructs nested (func ...) expressions without evaluating them
 
-(foldl_data items (a b c))
-
 (exec 1
-    (, (foldl_data $type $x))
+    (,)
     (O  (pure 
-            (Test Foldl $type $result)
+            (Test Foldl TuplePacked $result)
             $result
-            (foldl cons () (' $x))
+            (foldl (tuple cons (tuple) (tuple a b c)))
         )
     )
 )
 
 (exec 2
-    (, (foldl_data $type $x))
+    (,)
     (O  (pure 
-            (Test FoldlAtom $type $result)
+            (Test FoldlAtom TuplePacked $result)
             $result
-            (foldl-atom cons () (' $x))
+            (foldl-atom (tuple cons (tuple) (tuple a b c)))
+        )
+    )
+)
+
+(exec 3
+    (,)
+    (O  (pure
+            (Test Foldl ThreeArgs $result)
+            $result
+            (foldl cons (tuple) (tuple a b c))
+        )
+    )
+)
+
+(exec 4
+    (,)
+    (O  (pure
+            (Test FoldlAtom ThreeArgs $result)
+            $result
+            (foldl-atom cons (tuple) (tuple a b c))
         )
     )
 )
