@@ -66,3 +66,40 @@
         )
     )
 )
+
+;; ---------------- 6. QUOTED PACKED BINARY OPS ----------------
+(exec 6
+    (, (bin_data list1 $a) (bin_data list2 $b))
+    (O  (pure
+            (Test IntersectionQuoted $a $b $result)
+            $result
+            (intersection-atom (' ($a $b)))
+        )
+        (pure
+            (Test SubtractionQuoted $a $b $result)
+            $result
+            (subtraction-atom (' ($a $b)))
+        )
+        (pure
+            (Test UnionQuoted $a $b $result)
+            $result
+            (union-atom (' ($a $b)))
+        )
+        (pure
+            (Test AppendQuoted $a $b $result)
+            $result
+            (append (' ($a $b)))
+        )
+    )
+)
+
+;; ---------------- 7. UNION-ATOM DEDUPLICATION ----------------
+(exec 7
+    (, (bin_data listA $a) (bin_data listB $b))
+    (O  (pure
+            (Test UnionQuotedDedup $a $b $result)
+            $result
+            (union-atom (' ($a $b)))
+        )
+    )
+)
