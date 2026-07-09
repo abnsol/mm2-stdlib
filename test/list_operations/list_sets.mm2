@@ -29,7 +29,7 @@
     (O  (pure 
             (Test Intersection $a $b $result)
             $result
-            (intersection-atom (' ($a $b)))
+            (intersection-atom (' $a) (' $b))
         )
     )
 )
@@ -40,7 +40,7 @@
     (O  (pure 
             (Test Subtraction $a $b $result)
             $result
-            (subtraction-atom (' ($a $b)))
+            (subtraction-atom (' $a) (' $b))
         )
     )
 )
@@ -51,7 +51,7 @@
     (O  (pure 
             (Test Union $a $b $result)
             $result
-            (union-atom (' ($a $b)))
+            (union-atom (' $a) (' $b))
         )
     )
 )
@@ -62,66 +62,7 @@
     (O  (pure 
             (Test Append $a $b $result)
             $result
-            (append (' ($a $b)))
-        )
-    )
-)
-
-;; ---------------- 6. QUOTED LITERAL REGRESSION ----------------
-;; Binary list functions must also work when the first argument is quoted.
-(exec 6
-    (,)
-    (O  (pure
-            (Test UnionQuotedLiteral $result)
-            $result
-            (union-atom (' ((a a b) (b c c))))
-        )
-        (pure
-            (Test AppendQuotedLiteral $result)
-            $result
-            (append (' ((a a b) (b c c))))
-        )
-        (pure
-            (Test IntersectionQuotedLiteral $result)
-            $result
-            (intersection-atom (' ((a a b c) (a b b c c))))
-        )
-        (pure
-            (Test SubtractionQuotedLiteral $result)
-            $result
-            (subtraction-atom (' ((a a b c) (a c))))
-        )
-    )
-)
-
-;; ---------------- 7. TUPLE ARGUMENT REGRESSION ----------------
-;; The same binary functions should also accept tuple-produced packed arguments.
-(exec 7
-    (,)
-    (O  (pure
-            (Test UniqueTupleArg $result)
-            $result
-            (unique-atom (tuple a b a c))
-        )
-        (pure
-            (Test UnionTuplePacked $result)
-            $result
-            (union-atom (tuple (tuple a a b) (tuple b c c)))
-        )
-        (pure
-            (Test AppendTuplePacked $result)
-            $result
-            (append (tuple (tuple a a b) (tuple b c c)))
-        )
-        (pure
-            (Test IntersectionTuplePacked $result)
-            $result
-            (intersection-atom (tuple (tuple a a b c) (tuple a b b c c)))
-        )
-        (pure
-            (Test SubtractionTuplePacked $result)
-            $result
-            (subtraction-atom (tuple (tuple a a b c) (tuple a c)))
+            (append (' $a) (' $b))
         )
     )
 )

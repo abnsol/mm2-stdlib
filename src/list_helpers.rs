@@ -37,21 +37,6 @@ pub fn vec_to_exp(sink: &mut ExprSink, items: &[Expr]) -> Result<(), EvalError> 
     Ok(())
 }
 
-pub fn exp_to_spans(tuple_expr: Expr) -> Result<Vec<Vec<u8>>, EvalError> {
-    exp_to_vec(tuple_expr)?
-        .into_iter()
-        .map(|e| Ok(expr_span(e).to_vec()))
-        .collect()
-}
-
-pub fn spans_to_exp(sink: &mut ExprSink, items: &[Vec<u8>]) -> Result<(), EvalError> {
-    sink.write(SourceItem::Tag(Tag::Arity(items.len() as u8)))?;
-    for item in items {
-        sink.extend_from_slice(item)?;
-    }
-    Ok(())
-}
-
 pub fn expr_symbol_content(e: Expr) -> Option<&'static [u8]> {
     unsafe { e.symbol()?.as_ref() }
 }

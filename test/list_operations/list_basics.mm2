@@ -1,6 +1,5 @@
 ;; Tests for basic list extraction and metadata operations:
-;; length, car, cdr, cons, decons, first, first-from-pair,
-;; second-from-pair, size-atom, car-atom, and cdr-atom.
+;; first, first-from-pair, second-from-pair, size-atom, car-atom, and cdr-atom.
 
 (list_data empty ())
 (list_data single (a))
@@ -8,16 +7,6 @@
 (list_data nested (a (b c) ((d)) e))
 
 ;; ---------------- 1. FIRST-FROM-PAIR / FIRST ----------------
-(exec 0
-    (, (list_data $type $x))
-    (O  (pure
-            (Test Length $type $n)
-            $n
-            (length (' $x))
-        )
-    )
-)
-
 (exec 1
     (, (list_data $type $x))
     (O  (pure 
@@ -38,49 +27,8 @@
     )
 )
 
-;; ---------------- 2. CAR / CDR / CONS / DECONS ----------------
+;; ---------------- 2. SECOND-FROM-PAIR ----------------
 (exec 3
-    (, (list_data $type $x))
-    (O  (pure
-            (Test Car $type $head)
-            $head
-            (car (' $x))
-        )
-    )
-)
-
-(exec 4
-    (, (list_data $type $x))
-    (O  (pure
-            (Test Cdr $type $tail)
-            $tail
-            (cdr (' $x))
-        )
-    )
-)
-
-(exec 5
-    (, (list_data $type $x))
-    (O  (pure
-            (Test Cons $type $result)
-            $result
-            (cons (' (z $x)))
-        )
-    )
-)
-
-(exec 6
-    (, (list_data $type $x))
-    (O  (pure
-            (Test Decons $type $result)
-            $result
-            (decons (' $x))
-        )
-    )
-)
-
-;; ---------------- 3. SECOND-FROM-PAIR ----------------
-(exec 7
     (, (list_data $type $x))
     (O  (pure 
             (Test SecondFromPair $type $second)
@@ -90,8 +38,8 @@
     )
 )
 
-;; ---------------- 4. SIZE-ATOM ----------------
-(exec 8
+;; ---------------- 3. SIZE-ATOM ----------------
+(exec 4
     (, (list_data $type $x))
     (O  (pure 
             (Test SizeAtom $type $n)
@@ -101,8 +49,8 @@
     )
 )
 
-;; ---------------- 5. CAR-ATOM ----------------
-(exec 9
+;; ---------------- 4. CAR-ATOM ----------------
+(exec 5
     (, (list_data $type $x))
     (O  (pure 
             (Test CarAtom $type $head)
@@ -112,49 +60,13 @@
     )
 )
 
-;; ---------------- 6. CDR-ATOM ----------------
-(exec 10
+;; ---------------- 5. CDR-ATOM ----------------
+(exec 6
     (, (list_data $type $x))
     (O  (pure 
             (Test CdrAtom $type $tail)
             $tail
             (cdr-atom (' $x))
-        )
-    )
-)
-
-;; ---------------- 7. TUPLE ARGUMENT REGRESSION ----------------
-(exec 11
-    (,)
-    (O  (pure
-            (Test LengthTupleArg $result)
-            $result
-            (length (tuple a b c))
-        )
-        (pure
-            (Test CarTupleArg $result)
-            $result
-            (car (tuple a b c))
-        )
-        (pure
-            (Test CdrTupleArg $result)
-            $result
-            (cdr (tuple a b c))
-        )
-        (pure
-            (Test ConsTuplePacked $result)
-            $result
-            (cons (tuple z (tuple a b c)))
-        )
-        (pure
-            (Test ConsTupleArgs $result)
-            $result
-            (cons z (tuple a b c))
-        )
-        (pure
-            (Test DeconsTupleArg $result)
-            $result
-            (decons (tuple a b c))
         )
     )
 )

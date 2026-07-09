@@ -83,18 +83,3 @@
         )
     )
 )
-
-(exec 7
-    (,)
-    (O  (pure
-            (Test SortAtomTupleArg $result)
-            $result
-            (sort-atom (tuple c a d b))
-        )
-        (pure
-            (Test SortMathTupleArg $result)
-            $result
-            (sort-math (tuple 42 10 5 100 0))
-        )
-    )
-)

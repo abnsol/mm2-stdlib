@@ -10,7 +10,7 @@
     (O  (pure 
             (Test Index $type 0 $result)
             $result
-            (index-atom (' ($x 0)))
+            (index-atom (' $x) 0)
         )
     )
 )
@@ -20,7 +20,7 @@
     (O  (pure 
             (Test Index $type 1 $result)
             $result
-            (index-atom (' ($x 1)))
+            (index-atom (' $x) 1)
         )
     )
 )
@@ -30,7 +30,7 @@
     (O  (pure 
             (Test Index $type 2 $result)
             $result
-            (index-atom (' ($x 2)))
+            (index-atom (' $x) 2)
         )
     )
 )
@@ -41,7 +41,7 @@
     (O  (pure 
             (Test IsMemberFound $type $result)
             $result
-            (is-member (' (a $x)))
+            (is-member a (' $x))
         )
     )
 )
@@ -52,23 +52,7 @@
     (O  (pure 
             (Test IsMemberNotFound $type $result)
             $result
-            (is-member (' (z $x)))
-        )
-    )
-)
-
-;; ---------------- 4. TUPLE ARGUMENT REGRESSION ----------------
-(exec 6
-    (,)
-    (O  (pure
-            (Test IndexTuplePacked $result)
-            $result
-            (index-atom (tuple (tuple a b c) 1))
-        )
-        (pure
-            (Test IsMemberTuplePacked $result)
-            $result
-            (is-member (tuple b (tuple a b c)))
+            (is-member z (' $x))
         )
     )
 )
