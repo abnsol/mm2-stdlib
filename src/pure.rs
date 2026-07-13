@@ -340,8 +340,8 @@ pub extern "C" fn index_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Resu
     if expr.consume_head_check(b"index-atom")? != 2 {
         return Err(EvalError::from("takes two arguments"));
     }
-    let list = expr.consume::<Expr>()?;
     let index_expr = expr.consume::<Expr>()?;
+    let list = expr.consume::<Expr>()?;
     let items = exp_to_vec(list)?;
     let index_span = expr_span(index_expr);
     let index_str = unsafe { std::str::from_utf8_unchecked(index_span.get(1..).ok_or_else(|| EvalError::from("invalid index span"))?) };

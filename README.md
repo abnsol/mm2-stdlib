@@ -107,7 +107,7 @@ For a complete working example, see the [`test-mm2stdlib`](https://github.com/ab
 | `decons` | `(List)` | `(Expr, List)` | Split list into head and tail. |
 | `append` | `(List, List)` | `List` | Concatenate two lists. |
 | `reverse` | `(List)` | `List` | Reverse a list. |
-| `index-atom` | `(List, Number)` | `Expr` | Element at index. |
+| `index-atom` | `(Number, List)` | `Expr` | Element at index (index first, then list). |
 | `is-member` | `(Expr, List)` | `Bool` | Check membership. |
 | `exclude-item` | `(Expr, List)` | `List` | Remove all instances of an element. |
 | `unique-atom` | `(List)` | `List` | Remove duplicates. |

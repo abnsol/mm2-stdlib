@@ -10,7 +10,7 @@
     (O  (pure 
             (Test Index $type 0 $result)
             $result
-            (index-atom (' $x) 0)
+            (index-atom 0 (' $x))
         )
     )
 )
@@ -20,7 +20,7 @@
     (O  (pure 
             (Test Index $type 1 $result)
             $result
-            (index-atom (' $x) 1)
+            (index-atom 1 (' $x))
         )
     )
 )
@@ -30,7 +30,7 @@
     (O  (pure 
             (Test Index $type 2 $result)
             $result
-            (index-atom (' $x) 2)
+            (index-atom 2 (' $x))
         )
     )
 )
