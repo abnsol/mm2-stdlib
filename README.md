@@ -86,6 +86,8 @@ eval-ffi = { path = "experiments/eval-ffi" }
 mork-expr = { path = "expr" }
 ```
 
+For a complete working example, see the [`test-mm2stdlib`](https://github.com/abnsol/MORK/tree/test-mm2stdlib) branch on the author's fork.
+
 ---
 
 ## Features
@@ -94,6 +96,7 @@ mork-expr = { path = "expr" }
 |---|---|---|---|
 | `bool_from_string` | `(String)` | `Bool` | Parse a boolean from a string. |
 | `and_bool`, `or_bool`, `xor_bool`, `implies_bool` | `(Bool, Bool)` | `Bool` | Logical operators. |
+| `u8_from_string`, `u16_from_string`, `u32_from_string`, `u64_from_string`, `u128_from_string` | `(String)` | `u*` | Parse unsigned integer from a string. |  
 | `<op>_<type>` | `(Type, Type)` | `Bool` | Numeric comparisons: `lt`, `gt`, `le`, `ge`, `eq`, `ne` for `u8`–`u128`, `i8`–`i128`, `f32`, `f64`. |
 | `length`, `size-atom` | `(List)` | `Number` | Number of elements in a list. |
 | `car`, `car-atom`, `first`, `first-from-pair` | `(List)` | `Expr` | First element of a list. |

@@ -35,12 +35,32 @@ macro_rules! bool_from_string {
     }
 }
 
+macro_rules! uint_from_string {
+    ($name:ident, $t:ty) => {
+        pub extern "C" fn $name(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
+            let expr = unsafe { &mut *expr };
+            let sink = unsafe { &mut *sink };
+            let items = expr.consume_head_check(stringify!($name).as_bytes())?;
+            if items != 1 { return Err(EvalError::from("only takes one argument")) }
+            let SourceItem::Symbol(symbol) = expr.read() else { return Err(EvalError::from("only parses symbols")) };
+            let result: $t = str::from_utf8(symbol).map_err(|_| EvalError::from(concat!(stringify!($name), " parsing string not utf8")))?.parse().map_err(|_| EvalError::from(concat!("string not a valid ", stringify!($t), " in ", stringify!($name))))?;
+            sink.write(SourceItem::Symbol(result.to_be_bytes()[..].into()))?;
+            Ok(())
+        }
+    }
+}
+
 // Relational operators
 relational_binary!(lt_u8(x:u8, y:u8) => x < y);
 relational_binary!(lt_u16(x:u16, y:u16) => x < y);
 relational_binary!(lt_u32(x:u32, y:u32) => x < y);
 relational_binary!(lt_u64(x:u64, y:u64) => x < y);
 relational_binary!(lt_u128(x:u128, y:u128) => x < y);
+uint_from_string!(u8_from_string, u8);
+uint_from_string!(u16_from_string, u16);
+uint_from_string!(u32_from_string, u32);
+uint_from_string!(u64_from_string, u64);
+uint_from_string!(u128_from_string, u128);
 relational_binary!(lt_i8(x:i8, y:i8) => x < y);
 relational_binary!(lt_i16(x:i16, y:i16) => x < y);
 relational_binary!(lt_i32(x:i32, y:i32) => x < y);
@@ -659,6 +679,13 @@ pub fn register(scope: &mut EvalScope) {
     scope.add_func("ge_u128", ge_u128, FuncType::Pure);
     scope.add_func("eq_u128", eq_u128, FuncType::Pure);
     scope.add_func("ne_u128", ne_u128, FuncType::Pure);
+
+    // Unsigned from_string converters
+    scope.add_func("u8_from_string", u8_from_string, FuncType::Pure);
+    scope.add_func("u16_from_string", u16_from_string, FuncType::Pure);
+    scope.add_func("u32_from_string", u32_from_string, FuncType::Pure);
+    scope.add_func("u64_from_string", u64_from_string, FuncType::Pure);
+    scope.add_func("u128_from_string", u128_from_string, FuncType::Pure);
 
     // Boolean operators
     scope.add_func("bool_from_string", bool_from_string, FuncType::Pure);
