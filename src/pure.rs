@@ -349,16 +349,29 @@ pub extern "C" fn is_member(expr: *mut ExprSource, sink: *mut ExprSink) -> Resul
     Ok(())
 }
 
+fn consume_binary_list_args(expr: &mut ExprSource, name: &[u8]) -> Result<(Vec<Expr>, Vec<Expr>), EvalError> {
+    match expr.consume_head_check(name)? {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            if pair.len() != 2 {
+                return Err(EvalError::from("takes two list arguments"));
+            }
+            Ok((exp_to_vec(pair[0])?, exp_to_vec(pair[1])?))
+        }
+        2 => {
+            let list1 = expr.consume::<Expr>()?;
+            let list2 = expr.consume::<Expr>()?;
+            Ok((exp_to_vec(list1)?, exp_to_vec(list2)?))
+        }
+        _ => Err(EvalError::from("takes two arguments")),
+    }
+}
+
 pub extern "C" fn subtraction_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"subtraction-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_binary_list_args(expr, b"subtraction-atom")?;
     let mut result = Vec::with_capacity(items1.len());
     let mut to_remove: Vec<&[u8]> = items2.iter().map(|e| expr_span(*e)).collect();
     for item in &items1 {
@@ -375,29 +388,21 @@ pub extern "C" fn subtraction_atom(expr: *mut ExprSource, sink: *mut ExprSink) -
 pub extern "C" fn union_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"union-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_binary_list_args(expr, b"union-atom")?;
     let mut result = Vec::with_capacity(items1.len() + items2.len());
-    result.extend_from_slice(&items1);
-    result.extend_from_slice(&items2);
+    for item in items1.iter().chain(items2.iter()) {
+        let span = expr_span(*item);
+        if !result.iter().any(|seen| expr_span(*seen) == span) {
+            result.push(*item);
+        }
+    }
     vec_to_exp(sink, &result)
 }
 
 pub extern "C" fn intersection_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"intersection-atom")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_binary_list_args(expr, b"intersection-atom")?;
     let mut counts2: Vec<(&[u8], usize)> = Vec::with_capacity(items2.len());
     for item in &items2 {
         let span = expr_span(*item);
@@ -423,13 +428,7 @@ pub extern "C" fn intersection_atom(expr: *mut ExprSource, sink: *mut ExprSink) 
 pub extern "C" fn append(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
-    if expr.consume_head_check(b"append")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let list1 = expr.consume::<Expr>()?;
-    let list2 = expr.consume::<Expr>()?;
-    let items1 = exp_to_vec(list1)?;
-    let items2 = exp_to_vec(list2)?;
+    let (items1, items2) = consume_binary_list_args(expr, b"append")?;
     let mut result = Vec::with_capacity(items1.len() + items2.len());
     result.extend_from_slice(&items1);
     result.extend_from_slice(&items2);
