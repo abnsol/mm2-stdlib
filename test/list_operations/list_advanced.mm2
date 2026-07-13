@@ -44,7 +44,7 @@
     (O  (pure 
             (Test ExcludeItem $type $result)
             $result
-            (exclude-item (' $elem) (' $list))
+            (exclude-item $elem (' $list)) 
         )
     )
 )
