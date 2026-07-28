@@ -1,0 +1,17 @@
+(bin_data listA (1 2 3))
+(bin_data listB (1 2 3))
+
+
+(exec 7
+    (, 
+        (bin_data listA $a)
+        (bin_data listB $b)
+    )
+    (O
+        (pure
+            (Test AssertEqual $a $b $result)
+            $result
+            (assert-equal-atom (' ($a $b)))
+        )
+    )
+)

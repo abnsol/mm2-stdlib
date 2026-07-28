@@ -572,35 +572,180 @@ pub extern "C" fn sort_math(expr: *mut ExprSource, sink: *mut ExprSink) -> Resul
     vec_to_exp(sink, &sorted_items)
 }
 
-fn foldl_impl(expr: &mut ExprSource, sink: &mut ExprSink, head: &[u8]) -> Result<(), EvalError> {
+
+fn foldl_impl(
+    expr: &mut ExprSource,
+    sink: &mut ExprSink,
+    head: &[u8]
+) -> Result<(), EvalError> {
     if expr.consume_head_check(head)? != 3 {
         return Err(EvalError::from("takes three arguments"));
     }
+
     let func = expr.consume::<Expr>()?;
     let init = expr.consume::<Expr>()?;
     let list = expr.consume::<Expr>()?;
-    let items = exp_to_vec(list)?;
-    let func_name = expr_span(func);
-    let mut accum_bytes = expr_span(init).to_vec();
-    for item in &items {
-        let item_bytes = expr_span(*item);
-        let mut new_accum = Vec::with_capacity(1 + func_name.len() + accum_bytes.len() + item_bytes.len());
-        new_accum.push(mork_expr::item_byte(Tag::Arity(3)));
-        new_accum.extend_from_slice(func_name);
-        new_accum.extend_from_slice(&accum_bytes);
-        new_accum.extend_from_slice(item_bytes);
-        accum_bytes = new_accum;
-    }
-    sink.extend_from_slice(&accum_bytes)?;
-    Ok(())
-}
 
-pub extern "C" fn foldl(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
-    foldl_impl(unsafe { &mut *expr }, unsafe { &mut *sink }, b"foldl")
+    let items = exp_to_vec(list)?;
+    let vals = items_to_f64s(&items)?;
+    let accum_init = items_to_f64s(&[init])?[0];
+    let raw_func = expr_span(func);
+
+    let clean_func = raw_func
+        .iter()
+        .copied()
+        .filter(|&b| b == b'+' || b == b'-' || b == b'*' || b == b'/')
+        .next();
+    
+    let accum_bytes = match clean_func {
+        Some(b'+') => vals.iter().fold(accum_init, |acc, &x| acc + x),
+        Some(b'-') => vals.iter().fold(accum_init, |acc, &x| acc - x),
+        Some(b'/') => vals.iter().fold(accum_init, |acc, &x| acc / x),
+        Some(b'*') => vals.iter().fold(accum_init, |acc, &x| acc * x),
+        _ => return Err(EvalError::from("unsupported operation")),
+    };
+    println!("{}", accum_bytes);
+     
+    let result_str = if accum_bytes.fract() == 0.0 {
+        (accum_bytes as i64).to_string()
+    } else {
+        accum_bytes.to_string()
+    };
+    sink.write(SourceItem::Symbol(result_str.as_bytes().into()))?;
+    Ok(())
 }
 
 pub extern "C" fn foldl_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
     foldl_impl(unsafe { &mut *expr }, unsafe { &mut *sink }, b"foldl-atom")
+}
+
+pub extern "C" fn map_atom(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
+    let expr = unsafe { &mut *expr };
+    let sink = unsafe { &mut *sink };
+
+    let argc = expr.consume_head_check(b"map-atom")?;
+
+    if argc != 2 && argc != 3 {
+        return Err(EvalError::from(
+            "takes either (op list) or (op operand list)",
+        ));
+    }
+
+    let op_expr = expr.consume::<Expr>()?;
+
+    let (operand, list_expr) = if argc == 3 {
+        let operand_expr = expr.consume::<Expr>()?;
+
+        let operand = items_to_f64s(&[operand_expr])
+            .ok()
+            .and_then(|v| v.first().copied());
+
+        let list_expr = expr.consume::<Expr>()?;
+
+        (operand, list_expr)
+    } else {
+        let list_expr = expr.consume::<Expr>()?;
+        (None, list_expr)
+    };
+
+    let items = exp_to_vec(list_expr)?;
+    let vals = items_to_f64s(&items)?;
+
+    let raw_func = expr_span(op_expr);
+    
+    let clean_func = raw_func
+        .iter()
+        .copied()
+        .filter(|&b| b == b'+' || b == b'-' || b == b'*' || b == b'/' || b == b'i' || b == b'd' || b == b's')
+        .next();
+
+    let mapped_vals: Vec<f64> = match (clean_func, operand) {
+        
+        (Some(b'+'), Some(k)) => vals.iter().map(|&x| x + k).collect(),
+        (Some(b'*'), Some(k)) => vals.iter().map(|&x| x * k).collect(),
+        (Some(b'-'), Some(k)) => vals.iter().map(|&x| x - k).collect(),
+        (Some(b'/'), Some(k)) => vals.iter().map(|&x| x / k).collect(),
+
+        (Some(b'-'), None)    => vals.iter().map(|&x| -x).collect(),
+        (Some(b'+'), None)    => vals.iter().map(|&x| x.abs()).collect(),
+        (Some(b's'), None)    => vals.iter().map(|&x| x * x).collect(),      // sqr
+        (Some(b'i'), None)    => vals.iter().map(|&x| x + 1.0).collect(),    // inc
+        (Some(b'd'), None)    => vals.iter().map(|&x| x - 1.0).collect(),    // dec
+        
+        _ => return Err(EvalError::from("unsupported or malformed map operation")),
+    };
+
+    sink.write(SourceItem::Tag(Tag::Arity(mapped_vals.len() as u8)))?;
+
+    for e in mapped_vals {
+        sink.write(SourceItem::Symbol(e.to_string().as_bytes().into()))?;
+    }
+
+    Ok(())
+} 
+
+pub extern "C" fn reduce(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(), EvalError> {
+    let expr = unsafe { &mut *expr };
+    let sink = unsafe { &mut *sink };
+
+    if expr.consume_head_check(b"reduce")? != 2{
+        return Err(EvalError::from("takes two arguments"));
+    }
+
+    let func_expr = expr.consume::<Expr>()?;
+    let list_expr = expr.consume::<Expr>()?;
+
+    let items = exp_to_vec(list_expr)?;
+    let vals = items_to_f64s(&items)?;
+
+    let raw_func = expr_span(func_expr);
+    let clean_func = raw_func
+        .iter()
+        .copied()
+        .filter(|&b| b == b'+' || b == b'-' || b == b'*' || b == b'/')
+        .next();
+    
+    let accum = match clean_func {
+      Some(b'+') => vals.iter().copied().reduce(|acc, curr| acc + curr),
+      Some(b'-') => vals.iter().copied().reduce(|acc, curr| acc - curr),
+      Some(b'/') => vals.iter().copied().reduce(|acc, curr| acc / curr),
+      Some(b'*') => vals.iter().copied().reduce(|acc, curr| acc * curr),
+      _ => return Err(EvalError::from("unsupported operation")),
+    };
+    let result = accum.ok_or_else(|| EvalError::from("empty value"))?;
+
+    let result_str = if result.fract() == 0.0 {
+        (result as i64).to_string()
+    } else {
+        result.to_string()
+    };
+
+    sink.write(SourceItem::Symbol(result_str.as_bytes().into()))?;
+    Ok(())
+}
+
+pub extern "C" fn assert_equal_atom(
+    expr: *mut ExprSource,
+    sink: *mut ExprSink,
+) -> Result<(), EvalError> {
+    let expr = unsafe { &mut *expr };
+    let sink = unsafe { &mut *sink };
+
+    let (items1, items2) = consume_binary_list_args(expr, b"assert-equal-atom")?;
+
+    let equal = items1.len() == items2.len()
+        && items1
+            .iter()
+            .zip(items2.iter())
+            .all(|(a, b)| expr_span(*a) == expr_span(*b));
+
+
+    if equal {
+        sink.write(SourceItem::Symbol(b"true"))?;
+    } else {
+        sink.write(SourceItem::Symbol(b"false"))?;
+    }
+    Ok(())
 }
 
 // Registration
@@ -714,7 +859,6 @@ pub fn register(scope: &mut EvalScope) {
     scope.add_func("intersection-atom", intersection_atom, FuncType::Pure);
     scope.add_func("append", append, FuncType::Pure);
     scope.add_func("foldl-atom", foldl_atom, FuncType::Pure);
-    scope.add_func("foldl", foldl, FuncType::Pure);
     scope.add_func("last", last, FuncType::Pure);
     scope.add_func("reverse", reverse, FuncType::Pure);
     scope.add_func("exclude-item", exclude_item, FuncType::Pure);
@@ -722,4 +866,7 @@ pub fn register(scope: &mut EvalScope) {
     scope.add_func("max-atom", max_atom, FuncType::Pure);
     scope.add_func("sort-atom", sort_atom, FuncType::Pure);
     scope.add_func("sort-math", sort_math, FuncType::Pure);
+    scope.add_func("map-atom", map_atom, FuncType::Pure);
+    scope.add_func("reduce", reduce, FuncType::Pure);
+    scope.add_func("assert-equal-atom", assert_equal_atom, FuncType::Pure);
 }
