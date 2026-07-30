@@ -1,17 +1,81 @@
 (bin_data listA (1 2 3))
 (bin_data listB (1 2 3))
+(bin_data listC (4 5 6))
 
-
-(exec 7
+;; Test 1: Packed list comparison (equal)
+(exec 1
     (, 
         (bin_data listA $a)
         (bin_data listB $b)
     )
     (O
         (pure
-            (Test AssertEqual $a $b $result)
+            (Test AssertEqualPacked $a $b $result)
             $result
-            (assert-equal-atom (' ($a $b)))
+            (assertEqual (' ($a $b)))
+        )
+    )
+)
+
+;; Test 2: Packed list comparison (unequal)
+(exec 2
+    (, 
+        (bin_data listA $a)
+        (bin_data listC $c)
+    )
+    (O
+        (pure
+            (Test AssertEqualPackedNot $a $c $result)
+            $result
+            (assertEqual (' ($a $c)))
+        )
+    )
+)
+
+;; Test 3:symbol comparison (equal)
+(exec 3
+    (, (bin_data listA $a))
+    (O
+        (pure
+            (Test AssertEqualSymbols hello hello $result)
+            $result
+            (assertEqual hello hello)
+        )
+    )
+)
+
+;; Test 4:symbol comparison (unequal)
+(exec 4
+    (, (bin_data listA $a))
+    (O
+        (pure
+            (Test AssertEqualSymbolsNot hello world $result)
+            $result
+            (assertEqual hello world)
+        )
+    )
+)
+
+;; Test 5:number comparison (equal)
+(exec 5
+    (, (bin_data listA $a))
+    (O
+        (pure
+            (Test AssertEqualNumbers 5 5 $result)
+            $result
+            (assertEqual 5 5)
+        )
+    )
+)
+
+;; Test 6:number comparison (unequal)
+(exec 6
+    (, (bin_data listA $a))
+    (O
+        (pure
+            (Test AssertEqualNumbersNot 5 6 $result)
+            $result
+            (assertEqual 5 6)
         )
     )
 )
