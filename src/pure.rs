@@ -191,11 +191,17 @@ pub extern "C" fn cons(expr: *mut ExprSource, sink: *mut ExprSink) -> Result<(),
     let expr = unsafe { &mut *expr };
     let sink = unsafe { &mut *sink };
 
-    if expr.consume_head_check(b"cons")? != 2 {
-        return Err(EvalError::from("takes two arguments"));
-    }
-    let head = expr.consume::<Expr>()?;
-    let tail_tuple = expr.consume::<Expr>()?;
+    let (head, tail_tuple) = match expr.consume_head_check(b"cons")? {
+        1 => {
+            let args = expr.consume::<Expr>()?;
+            let pair = exp_to_vec(args)?;
+            (pair[0], pair[1])
+        }
+        2 => {
+            (expr.consume::<Expr>()?, expr.consume::<Expr>()?)
+        }
+        _ => return Err(EvalError::from("takes 1 (packed) or 2 arguments")),
+    };
 
     let tail_items = exp_to_vec(tail_tuple)?;
 

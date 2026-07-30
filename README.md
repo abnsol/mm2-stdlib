@@ -117,7 +117,10 @@ For a complete working example, see the [`test-mm2stdlib`](https://github.com/ab
 | `min-atom`, `max-atom` | `(List)` | `Expr` | Minimum / maximum numeric element. |
 | `sort-math` | `(List)` | `List` | Numeric sort. |
 | `sort-atom` | `(List)` | `List` | Lexicographic (byte) sort. |
-| `foldl`, `foldl-atom` | `(Func, Init, List)` | `Expr` | Left fold over a list. |
+| `foldl` | `(Func, Init, List)` | `Expr` | Left fold over a list. |
+| `map-atom` | `(Op, Operand, List)` | `List` | Map an operation over a list (`self` operand uses element as both args for `+`/`*`). |
+| `reduce` | `(Op, List)` | `Expr` | Reduce a list with an associative operation. |
+| `assertEqual` | `(Expr, Expr)` or `(' (Expr Expr))` | `Bool` | Byte-level equality of any two expressions (bare or packed). |
 
 ---
 
