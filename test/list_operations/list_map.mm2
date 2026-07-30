@@ -1,0 +1,67 @@
+(map_data numbers (1 2 3 4))
+
+;; Test 1: Addition with fixed value (+ 20) -> (21 22 23 24)
+(exec 1
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom Add20 $type $result)
+            $result
+            (map-atom + 20 (' $x))
+        )
+    )
+)
+
+;; Test 2: Multiplication with fixed value (* 6) -> (6 12 18 24)
+(exec 2
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom Mul6 $type $result)
+            $result
+            (map-atom * 6 (' $x))
+        )
+    )
+)
+
+;; Test 3: Unary Negation (-) -> (-1 -2 -3 -4)
+(exec 3
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom Negate $type $result)
+            $result
+            (map-atom - (' $x))
+        )
+    )
+)
+
+;; Test 4: Unary Square ('sqr) -> (1 4 9 16)
+(exec 4
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom Square $type $result)
+            $result
+            (map-atom s (' $x))
+        )
+    )
+)
+
+;; Test 5: Unary increment ('i) -> (2 3 4 5)
+(exec 4
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom increment $type $result)
+            $result
+            (map-atom i (' $x))
+        )
+    )
+)
+
+;; Test 6: Unary decrement ('d) -> (0 1 2 3 )
+(exec 4
+    (, (map_data $type $x))
+    (O  (pure 
+            (Test MapAtom decrement $type $result)
+            $result
+            (map-atom d (' $x))
+        )
+    )
+)

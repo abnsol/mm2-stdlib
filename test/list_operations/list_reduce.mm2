@@ -1,0 +1,35 @@
+
+(reduce_data numbers (1 2 3 4))
+
+;; Test 1: Addition (1 + 2 + 3 + 4 = 10)
+(exec 1
+    (, (reduce_data $type $x))
+    (O  (pure 
+            (Test reduce Add $type $result)
+            $result
+            (reduce + (' $x))
+        )
+    )
+)
+
+;; Test 2: Subtraction (1 - 2 - 3 - 4 = -8)
+(exec 2
+    (, (reduce_data $type $x))
+    (O  (pure 
+            (Test reduce Sub $type $result)
+            $result
+            (reduce - (' $x))
+        )
+    )
+)
+
+;; Test 3: Multiplication (1 * 2 * 3 * 4 = 24)
+(exec 3
+    (, (reduce_data $type $x))
+    (O  (pure 
+            (Test reduce Mul $type $result)
+            $result
+            (reduce * (' $x))
+        )
+    )
+)
