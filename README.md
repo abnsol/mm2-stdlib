@@ -99,11 +99,7 @@ Python pure functions can be defined in two ways:
 
 If you add your Python pure function to the standard `pure_functions.py` module, no additional import is required.
 
-Import the `pure` decorator and decorate your function:
-
 ```python
-from mm2_stdlib.python import pure
-
 @pure
 def add(x, y):
     return x + y
