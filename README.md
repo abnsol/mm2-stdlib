@@ -48,10 +48,12 @@ impl DeserializableExpr for bool {
 
 Open `kernel/Cargo.toml` in your MORK workspace and add:
 
-```toml
 [dependencies]
+# Rust-only functionality
 mm2-stdlib = { git = "https://github.com/abnsol/mm2-stdlib" }
-```
+
+# Enable Python support
+mm2-stdlib = { git = "https://github.com/abnsol/mm2-stdlib", features = ["python"] }
 
 ### Step 3: Register the library in the kernel
 
@@ -85,6 +87,142 @@ eval = { path = "experiments/eval" }
 eval-ffi = { path = "experiments/eval-ffi" }
 mork-expr = { path = "expr" }
 ```
+
+## Adding Python Pure Functions
+
+Python pure functions can be defined in two ways:
+
+1. In the standard `pure_functions.py` module provided by `mm2-stdlib`.
+2. In a custom Python module created by the user.
+
+### Using `pure_functions.py`
+
+If you add your Python pure function to the standard `pure_functions.py` module, no additional import is required.
+
+Import the `pure` decorator and decorate your function:
+
+```python
+from mm2_stdlib.python import pure
+
+@pure
+def add(x, y):
+    return x + y
+```
+
+The standard Python initialization already imports `pure_functions.py`, so the function is automatically registered when the Python interpreter is initialized.
+
+### Using a Custom Python Module
+
+If you define your pure function in your own Python file, you must make sure that the module is imported during Python initialization.
+
+For example, suppose you create:
+
+```text
+my_python/
+└── my_functions.py
+```
+
+with:
+
+```python
+from mm2_stdlib.python import pure
+
+@pure
+def multiply(x, y):
+    return x * y
+```
+
+The `pure` decorator registers the function only when Python executes the module. Therefore, the custom module must be imported.
+
+This import should be added to the Python bootstrap code inside the `register()` function in:
+
+```text
+src/python/mod.rs
+```
+
+For example:
+
+```rust
+let code = CString::new(format!(
+    r#"
+import sys
+sys.path.insert(0, r"{python_dir}")
+import my_functions
+"#
+))
+.expect("python bootstrap code contained an interior NUL byte");
+
+py.run(&code, None, None)
+    .expect("failed to import my_functions from fixed package path");
+```
+
+Here:
+
+```python
+sys.path.insert(0, r"{python_dir}")
+```
+
+makes the directory containing the user's Python module available to Python's import system.
+
+Then:
+
+```python
+import my_functions
+```
+
+executes `my_functions.py`. This causes the `@pure` decorators to run and register the functions with the Rust-side Python function registry.
+
+### Registration Flow
+
+For the standard `pure_functions.py`:
+
+```text
+mm2-stdlib starts
+       │
+       ▼
+Python interpreter initialized
+       │
+       ▼
+pure_functions.py imported automatically
+       │
+       ▼
+@pure decorators execute
+       │
+       ▼
+Functions registered
+```
+
+For a custom Python module:
+
+```text
+User creates my_functions.py
+       │
+       ▼
+Import module in mod.rs::register()
+       │
+       ▼
+sys.path.insert(...)
+       │
+       ▼
+import my_functions
+       │
+       ▼
+@pure decorators execute
+       │
+       ▼
+Functions registered
+```
+
+### Important
+
+The `CString` and `py.run()` bootstrap code is part of the Rust-side Python initialization and belongs inside `src/python/mod.rs`, specifically in the `register()` function.
+
+Users who only add functions to the existing `pure_functions.py` do **not** need to add another import, because that module is already imported by the standard Python initialization.
+
+Users who place their functions in a separate Python file must add that module to the bootstrap import process so that the module is executed and its `@pure` functions are registered.
+
+
+
 
 For a complete working example, see the [`test-mm2stdlib`](https://github.com/abnsol/MORK/tree/test-mm2stdlib) branch on the author's fork.
 

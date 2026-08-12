@@ -604,8 +604,7 @@ fn foldl_impl(
         Some(b'*') => vals.iter().fold(accum_init, |acc, &x| acc * x),
         _ => return Err(EvalError::from("unsupported operation")),
     };
-    println!("{}", accum_bytes);
-     
+
     let result_str = if accum_bytes.fract() == 0.0 {
         (accum_bytes as i64).to_string()
     } else {

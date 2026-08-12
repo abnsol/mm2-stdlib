@@ -1,0 +1,12 @@
+(Age 10 27)
+
+(exec 4
+    (, (Age $x $y))
+    (O
+        (pure
+            (add $r)
+            $r
+            (py_add (f32_from_string $y) (f32_from_string $x))
+        )
+    )
+)
